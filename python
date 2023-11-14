@@ -1,0 +1,195 @@
+from sqlalchemy.orm import aliased
+from tabelas import *
+from database import session
+from sqlalchemy import func
+
+# Consulta 1: Obter o valor total de vendas/compras por cliente.
+
+registro_alias = aliased(Registro)
+
+consulta1 = (session.query(
+    Cliente.id,
+    Pessoa.nome.label('cliente'),
+    func.sum(registro_alias.valor_produto * registro_alias.quantidade).label('total_vendas')
+).join(Pessoa)
+  .join(Carrinho)
+  .join(registro_alias)
+  .group_by(Cliente.id)
+).all()
+
+# Consulta 2: Calcular a média de idade dos clientes.
+
+current_year = date.today().year
+consulta2 = (session.query(
+    func.avg(current_year - extract('year', Pessoa.data_nasc)).label('media_idade')
+).join(Cliente)
+).scalar()
+
+
+# Consulta 3: Contar o número de produtos vendidos por cliente.
+
+consulta3 = (session.query(
+    Cliente.id,
+    Pessoa.nome.label('cliente'),
+    func.count(registro_alias.id_produto).label('num_produtos_vendidos')
+).join(Pessoa)
+  .join(Carrinho)
+  .join(registro_alias)
+  .group_by(Cliente.id)
+).all()
+
+# Consulta 4: Encontrar o produto mais vendido.
+
+from tabelas import Produto
+
+# Supondo que Registro possui uma relação com Produto chamada 'produto'
+consulta4 = (session.query(
+    Registro.id_produto,
+    Produto.nome.label('produto'),
+    func.sum(Registro.quantidade).label('total_vendido')
+).join(Produto)
+  .group_by(Registro.id_produto)
+  .order_by(func.sum(Registro.quantidade).desc())
+  .limit(1)
+).all()
+
+# Consulta 5: Calcular a receita total da loja.
+
+consulta5 = session.query(
+    func.sum(Registro.valor_produto * Registro.quantidade).label('receita_total')
+).scalar()
+
+# Consulta 6: Listar os produtos em ordem crescente de preço.
+
+consulta7 = (session.query(Pessoa.nome.label('cliente'))
+             .join(Cliente, Pessoa.id == Cliente.id)
+             .order_by(Pessoa.nome)
+             .all())
+
+# Consulta 7: Listar os clientes em ordem alfabética por nome.
+
+consulta7 = (session.query(Pessoa.nome.label('cliente'))
+             .join(Cliente, Pessoa.id == Cliente.id)
+             .order_by(Pessoa.nome)
+             .all())
+
+# Consulta 8: Listar os produtos em ordem decrescente de quantidade em estoque.
+
+consulta8 = session.query(Produto).order_by(Produto.quantidade.desc()).all()
+
+# Consulta 9: Obter informações sobre os carrinhos de compras dos clientes.
+
+consulta9 = (session.query(
+    Cliente.id,
+    Pessoa.nome.label('cliente'),
+    Carrinho.data_criacao.label('data_carrinho'),
+    Carrinho.valor_total
+).join(Pessoa)
+  .join(Carrinho)
+  .all())
+
+# Consulta 10: Listar os pagamentos feitos pelos clientes.
+
+from tabelas import Pagamento
+
+consulta10 = (session.query(
+    Cliente.id,
+    Pessoa.nome.label('cliente'),
+    Pagamento.data_hora.label('data_pagamento'),
+    Pagamento.valor
+).join(Pessoa)
+  .join(Pagamento)
+  .all())
+
+
+#  Consulta 11: Encontrar os produtos vendidos em cada carrinho de compras.
+
+consulta11 = (session.query(
+    Carrinho.id,
+    Produto.nome.label('produto'),
+    Registro.quantidade
+).join(Registro)
+  .join(Produto)
+  .all())
+
+
+# Consulta 12: Encontrar o valor total de vendas para cada forma de pagamento.
+
+from tabelas import FormaPagamento, PagamentoForma
+
+consulta12 = (session.query(
+    FormaPagamento.nome.label('forma_pagamento'),
+    func.sum(PagamentoForma.valor).label('total_vendas')
+).join(PagamentoForma)
+  .group_by(FormaPagamento.nome)
+  .all())
+
+
+# Consulta 13: Calcular o valor médio dos produtos vendidos.
+
+consulta13 = session.query(
+    func.avg(Registro.valor_produto).label('valor_medio')
+).scalar()
+
+
+# Consulta 14: Listar os produtos em ordem decrescente de vendas.
+
+consulta14 = (session.query(
+    Produto.nome.label('produto'),
+    func.sum(Registro.quantidade).label('total_vendido')
+).join(Registro)
+  .group_by(Produto.nome)
+  .order_by(func.sum(Registro.quantidade).desc())
+  .all())
+
+# Consulta 15: Listar os clientes em ordem crescente de data de criação.
+
+consulta15 = (session.query(
+    Pessoa.nome.label('cliente'),
+    Cliente.data_criacao
+).join(Pessoa)
+  .order_by(Cliente.data_criacao)
+  .all())
+
+# Consulta 16: Encontrar os produtos que não foram vendidos.
+
+consulta16 = (session.query(Produto.nome.label('produto'))
+              .outerjoin(Registro, Produto.id == Registro.id_produto)
+              .filter(Registro.id_produto == None)
+              .all())
+
+
+# Consulta 17: Listar os funcionários e suas informações de contato.
+
+from tabelas import Funcionario
+
+consulta17 = (session.query(
+    Pessoa.nome.label('funcionario'),
+    Funcionario.email,
+    Funcionario.telefone
+).join(Funcionario, Pessoa.id == Funcionario.id)
+  .all())
+
+
+# Consulta 18: Encontrar os clientes que fizeram pagamentos em dinheiro.
+
+consulta18 = (session.query(Pessoa.nome.label('cliente'))
+              .join(Cliente, Pessoa.id == Cliente.id)
+              .join(Pagamento, Cliente.id == Pagamento.id_cliente)
+              .filter(PagamentoForma.nome == 'Dinheiro')  # Supondo que 'Dinheiro' é uma das formas de pagamento
+              .all())
+
+# Consulta 19: Encontrar o valor total de vendas para cada cliente.
+
+consulta19 = (session.query(
+    Pessoa.nome.label('cliente'),
+    func.sum(Registro.valor_produto * Registro.quantidade).label('valor_total_vendas')
+).join(Cliente, Pessoa.id == Cliente.id)
+  .join(Registro, Cliente.id == Registro.id_carrinho)
+  .group_by(Pessoa.nome)
+  .all())
+
+
+# Consulta 20: Listar os produtos em ordem crescente de quantidade em estoque.
+
+consulta20 = session.query(Produto.nome.label('produto'), Produto.quantidade).order_by(Produto.quantidade).all()
